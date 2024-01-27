@@ -8,7 +8,16 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.Autos;
 import frc.robot.commands.DefaultDriveCommand;
 import frc.robot.subsystems.DriveTrain;
+
+import java.util.List;
+
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.path.PathConstraints;
+import com.pathplanner.lib.path.PathPlannerTrajectory;
+
 import edu.wpi.first.wpilibj.PS4Controller.Button;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandPS4Controller;
@@ -32,6 +41,11 @@ public class RobotContainer {
   // private final CommandPS4Controller driverStick = new CommandPS4Controller(OperatorConstants.kDriverControllerPort);
   private final CommandXboxController driverStick = new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
+
+   // Set to use Path Planner
+  private boolean usePathPlanner = true;
+  // private boolean debugSwerve = false;
+  private final SendableChooser<Command> autoChooser;
   /**
    * The container for the robot. Contains subsystems, OI devices, and commands.
    */
@@ -39,14 +53,19 @@ public class RobotContainer {
 
     driveTrain.setDefaultCommand(new DefaultDriveCommand(
         driveTrain,
-        () -> -modifyAxis(driverStick.getLeftY() * Constants.DRIVETRAIN_THROTTLE)
+        () -> modifyAxis(driverStick.getLeftY() * Constants.DRIVETRAIN_THROTTLE)
             * DriveTrain.MAX_VELOCITY_METERS_PER_SECOND,
-        () -> -modifyAxis(driverStick.getLeftX() * Constants.DRIVETRAIN_THROTTLE)
+        () -> modifyAxis(driverStick.getLeftX() * Constants.DRIVETRAIN_THROTTLE)
             * DriveTrain.MAX_VELOCITY_METERS_PER_SECOND,
-        () -> -modifyAxis(driverStick.getRightX() * Constants.DRIVETRAIN_THROTTLE)
+        () -> modifyAxis(driverStick.getRightX() * Constants.DRIVETRAIN_THROTTLE)
             * DriveTrain.MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND));
     // Configure the trigger bindings
     configureBindings();
+
+    autoChooser = AutoBuilder.buildAutoChooser();
+    SmartDashboard.putData("Auto Chooser", autoChooser);
+    SmartDashboard.putBoolean("Use PathPlanner", true);
+    SmartDashboard.putBoolean("Debug Swerve", false);
   }
 
   /**
@@ -79,8 +98,10 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return null;
+    return autoChooser.getSelected();
   }
+
+   
 
   private static double modifyAxis(double value) {
     // Deadband

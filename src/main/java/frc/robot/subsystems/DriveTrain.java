@@ -9,11 +9,14 @@ import static frc.robot.Constants.DRIVETRAIN_TRACKWIDTH_METERS;
 import static frc.robot.Constants.DRIVETRAIN_WHEELBASE_METERS;
 
 import com.ctre.phoenix.sensors.WPI_Pigeon2;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.util.PathPlannerLogging;
 import com.swervedrivespecialties.swervelib.MkSwerveModuleBuilder;
 import com.swervedrivespecialties.swervelib.MotorType;
 import com.swervedrivespecialties.swervelib.SdsModuleConfigurations;
 import com.swervedrivespecialties.swervelib.SwerveModule;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -21,6 +24,7 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.shuffleboard.BuiltInLayouts;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
@@ -73,7 +77,6 @@ public class DriveTrain extends SubsystemBase {
   /** Creates a new DriveTrain. */
   public DriveTrain() {
     ShuffleboardTab shuffleboardTab = Shuffleboard.getTab("Drivetrain");
-    SmartDashboard.putData("Field", field);
     // zeroGyroscope();
 
     frontLeftModule = new MkSwerveModuleBuilder()
@@ -130,13 +133,39 @@ public class DriveTrain extends SubsystemBase {
     frontRightModule.resetToAbsolute();
     backLeftModule.resetToAbsolute();
     backRightModule.resetToAbsolute();
-  }
+
+
+    AutoBuilder.configureHolonomic(
+      this::getPose, 
+      this::resetPose, 
+      this::getSpeeds, 
+      this::drive, 
+      Constants.pathFollowerConfig,
+      () -> {
+          // Boolean supplier that controls when the path will be mirrored for the red alliance
+          // This will flip the path being followed to the red side of the field.
+          // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+
+          var alliance = DriverStation.getAlliance();
+          if (alliance.isPresent()) {
+              return alliance.get() == DriverStation.Alliance.Red;
+          }
+          return false;
+      },
+      this
+    );
+
+    // Set up custom logging to add the current path to a field 2d widget
+    PathPlannerLogging.setLogActivePathCallback((poses) -> field.getObject("path").setPoses(poses));
+
+    SmartDashboard.putData("Field", field);
+}
 
   public double getHeading() {
     return Math.IEEEremainder(gyroscope.getYaw(), 360);
   }
 
-  private SwerveModulePosition[] getPositions() {
+  public SwerveModulePosition[] getPositions() {
     SwerveModulePosition[] swervePositions = {
         frontLeftModule.getPosition(),
         frontRightModule.getPosition(),
@@ -146,9 +175,20 @@ public class DriveTrain extends SubsystemBase {
     return swervePositions;
   }
 
+  public SwerveModuleState[] getStates() {
+    SwerveModuleState[] swerveStates = {
+        frontLeftModule.getState(),
+        frontRightModule.getState(),
+        backLeftModule.getState(),
+        backRightModule.getState()
+    };
+    return swerveStates;
+  }
+
   @Override
   public void periodic() {
     // This method will be called once per scheduler run
+    field.setRobotPose(getPose());
   }
 
   public Rotation2d getGyroscopeRotation() {
@@ -175,4 +215,52 @@ public class DriveTrain extends SubsystemBase {
   public void zeroGyro(){
     gyroscope.setYaw(0.0);
   }
+
+  public Pose2d getPose() {
+    return odometry.getPoseMeters();
+  }
+
+  public void resetPose(Pose2d pose) {
+    odometry.resetPosition(gyroscope.getRotation2d(), getPositions(), pose);
+  }
+
+  public ChassisSpeeds getSpeeds() {
+    return kinematics.toChassisSpeeds(getStates());
+  }
+//* possibly will need from the pathplanner example project */
+
+//   public void driveFieldRelative(ChassisSpeeds fieldRelativeSpeeds) {
+//     driveRobotRelative(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, getPose().getRotation()));
+//   }
+
+//   public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds) {
+//     ChassisSpeeds targetSpeeds = ChassisSpeeds.discretize(robotRelativeSpeeds, 0.02);
+
+//     SwerveModuleState[] targetStates = kinematics.toSwerveModuleStates(targetSpeeds);
+//     setStates(targetStates);
+//   }
+
+//   public void setStates(SwerveModuleState[] targetStates) {
+//     SwerveDriveKinematics.desaturateWheelSpeeds(targetStates, Constants.Swerve.maxModuleSpeed);
+
+//     for (int i = 0; i < states.length; i++) {
+//       states[i].setTargetState(targetStates[i]);
+//     }
+//   }
+
+//   public SwerveModuleState[] getModuleStates() {
+//     SwerveModuleState[] states = new SwerveModuleState[states.length];
+//     for (int i = 0; i < states.length; i++) {
+//       states[i] = states[i].getStates();
+//     }
+//     return states;
+//   }
+
+//   public SwerveModulePosition[] getPosition() {
+//     SwerveModulePosition[] positions = new SwerveModulePosition[modules.length];
+//     for (int i = 0; i < states.length; i++) {
+//       positions[i] = states[i].getPositions();
+//     }
+//     return positions;
+//   }
 }
