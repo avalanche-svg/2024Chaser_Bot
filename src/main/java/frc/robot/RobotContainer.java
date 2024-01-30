@@ -39,7 +39,7 @@ public class RobotContainer {
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
   // private final CommandPS4Controller driverStick = new CommandPS4Controller(OperatorConstants.kDriverControllerPort);
-  private final CommandXboxController driverStick = new CommandXboxController(OperatorConstants.kDriverControllerPort);
+  private final CommandPS4Controller driverStick = new CommandPS4Controller(OperatorConstants.kDriverControllerPort);
 
 
    // Set to use Path Planner
