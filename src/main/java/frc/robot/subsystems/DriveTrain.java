@@ -9,6 +9,7 @@ import static frc.robot.Constants.DRIVETRAIN_TRACKWIDTH_METERS;
 import static frc.robot.Constants.DRIVETRAIN_WHEELBASE_METERS;
 
 import com.ctre.phoenix.sensors.WPI_Pigeon2;
+import com.ctre.phoenix6.hardware.Pigeon2;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.swervedrivespecialties.swervelib.MkSwerveModuleBuilder;
@@ -56,10 +57,12 @@ public class DriveTrain extends SubsystemBase {
 
   public static final double MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND = MAX_VELOCITY_METERS_PER_SECOND /
       Math.hypot(DRIVETRAIN_TRACKWIDTH_METERS / 2.0, DRIVETRAIN_WHEELBASE_METERS / 2.0);
-  WPI_Pigeon2 gyroscope = new WPI_Pigeon2(DRIVETRAIN_PIGEON_ID);
+  Pigeon2 gyroscope = new Pigeon2(DRIVETRAIN_PIGEON_ID);
   
 
   private final SwerveDriveOdometry odometry;
+
+  private SwerveModule[] modules;
 
   // Field object to keep track of location of bot.
   private final Field2d field = new Field2d();
@@ -74,11 +77,15 @@ public class DriveTrain extends SubsystemBase {
 
   private SwerveModuleState[] states;
 
+  
+
   /** Creates a new DriveTrain. */
   public DriveTrain() {
+
+    
     ShuffleboardTab shuffleboardTab = Shuffleboard.getTab("Drivetrain");
     // zeroGyroscope();
-
+modules = new SwerveModule[]{
     frontLeftModule = new MkSwerveModuleBuilder()
         .withLayout(shuffleboardTab.getLayout("Front Left Module", BuiltInLayouts.kList)
             .withSize(2, 4)
@@ -88,7 +95,7 @@ public class DriveTrain extends SubsystemBase {
         .withSteerMotor(MotorType.NEO, Constants.FRONT_LEFT_MODULE_STEER_MOTOR)
         .withSteerEncoderPort(Constants.FRONT_LEFT_MODULE_STEER_ENCODER)
         .withSteerOffset(Constants.FRONT_LEFT_MODULE_STEER_OFFSET)
-        .build();
+        .build(),
 
     frontRightModule = new MkSwerveModuleBuilder()
         .withLayout(shuffleboardTab.getLayout("Front Right Module", BuiltInLayouts.kList)
@@ -99,7 +106,7 @@ public class DriveTrain extends SubsystemBase {
         .withSteerMotor(MotorType.NEO, Constants.FRONT_RIGHT_MODULE_STEER_MOTOR)
         .withSteerEncoderPort(Constants.FRONT_RIGHT_MODULE_STEER_ENCODER)
         .withSteerOffset(Constants.FRONT_RIGHT_MODULE_STEER_OFFSET)
-        .build();
+        .build(),
 
     backLeftModule = new MkSwerveModuleBuilder()
         .withLayout(shuffleboardTab.getLayout("Back Left Module", BuiltInLayouts.kList)
@@ -110,7 +117,7 @@ public class DriveTrain extends SubsystemBase {
         .withSteerMotor(MotorType.NEO, Constants.BACK_LEFT_MODULE_STEER_MOTOR)
         .withSteerEncoderPort(Constants.BACK_LEFT_MODULE_STEER_ENCODER)
         .withSteerOffset(Constants.BACK_LEFT_MODULE_STEER_OFFSET)
-        .build();
+        .build(),
 
     backRightModule = new MkSwerveModuleBuilder()
         .withLayout(shuffleboardTab.getLayout("Back Right Module", BuiltInLayouts.kList)
@@ -121,7 +128,12 @@ public class DriveTrain extends SubsystemBase {
         .withSteerMotor(MotorType.NEO, Constants.BACK_RIGHT_MODULE_STEER_MOTOR)
         .withSteerEncoderPort(Constants.BACK_RIGHT_MODULE_STEER_ENCODER)
         .withSteerOffset(Constants.BACK_RIGHT_MODULE_STEER_OFFSET)
-        .build();
+        .build(),
+
+        
+          
+        
+        };
 
     odometry = new SwerveDriveOdometry(
         kinematics,
@@ -162,7 +174,7 @@ public class DriveTrain extends SubsystemBase {
 }
 
   public double getHeading() {
-    return Math.IEEEremainder(gyroscope.getYaw(), 360);
+    return Math.IEEEremainder(gyroscope.getYaw().getValueAsDouble(), 360);
   }
 
   public SwerveModulePosition[] getPositions() {
@@ -176,13 +188,11 @@ public class DriveTrain extends SubsystemBase {
   }
 
   public SwerveModuleState[] getStates() {
-    SwerveModuleState[] swerveStates = {
-        frontLeftModule.getState(),
-        frontRightModule.getState(),
-        backLeftModule.getState(),
-        backRightModule.getState()
-    };
-    return swerveStates;
+    SwerveModuleState[] states = new SwerveModuleState[modules.length];
+    for (int i = 0; i < modules.length; i++) {
+      states[i] = modules[i].getState();
+    }
+    return states;
   }
 
   @Override
@@ -194,10 +204,10 @@ public class DriveTrain extends SubsystemBase {
   public Rotation2d getGyroscopeRotation() {
     // Don't Remove Follwoing if you are using a Pigeon
     // return Rotation2d.fromDegrees(m_pigeon.getFusedHeading());
-    return Rotation2d.fromDegrees(gyroscope.getYaw());
+    return Rotation2d.fromDegrees(gyroscope.getYaw().getValueAsDouble());
   }
 
-  public void drive(ChassisSpeeds chassisSpeeds) {
+  public void   drive(ChassisSpeeds chassisSpeeds) {
     m_chassisSpeeds = chassisSpeeds;
     states = kinematics.toSwerveModuleStates(m_chassisSpeeds);
 
@@ -226,6 +236,11 @@ public class DriveTrain extends SubsystemBase {
 
   public ChassisSpeeds getSpeeds() {
     return kinematics.toChassisSpeeds(getStates());
+  }
+
+  public void setGyro(double degrees){
+    // Settting our gyroscope Yaw to what our Odometry Pose is..  
+    gyroscope.setYaw(degrees);
   }
 //* possibly will need from the pathplanner example project */
 

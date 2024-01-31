@@ -66,6 +66,8 @@ public class RobotContainer {
     SmartDashboard.putData("Auto Chooser", autoChooser);
     SmartDashboard.putBoolean("Use PathPlanner", true);
     SmartDashboard.putBoolean("Debug Swerve", false);
+
+    driveTrain.setGyro(180);
   }
 
   /**
